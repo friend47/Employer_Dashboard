@@ -1,0 +1,1765 @@
+ <!DOCTYPE html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Job Admin Dashboard</title>
+    <style>
+  .dot-menu {
+    list-style: none;
+    padding-left: 12px;
+    margin: 6px 0 0;
+  }
+
+  .dot-menu li {
+    position: relative;
+    padding-left: 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    color: #1f2937;
+    line-height: 1.4;
+  }
+
+  /* จุดสีเขียว */
+  .dot-menu li::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: #22c55e; /* เขียวแบบ jPOS */
+    border-radius: 50%;
+    position: absolute;
+    left: 0;
+    top: 7px;
+  }
+
+  /* hover */
+  .dot-menu li:hover {
+    color: #16a34a;
+  }
+
+  /* หัวข้อย่อย (ไม่แสดงจุด) */
+  .dot-menu .group-title {
+    font-weight: 600;
+    color: #374151;
+    margin-top: 10px;
+    cursor: default;
+  }
+
+  .dot-menu .group-title::before {
+    display: none;
+  }
+
+  /* active (เผื่อไว้ใช้ต่อ) */
+  .dot-menu li.active {
+    color: #16a34a;
+    font-weight: 600;
+  }
+    
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .sidebar {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    height: fit-content;
+  }
+
+  .content {
+    min-width: 0;
+  }
+
+  @media (max-width: 900px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont;
+        background: #f4f6f8;
+        margin: 0;
+        padding: 20px;
+      }
+
+      h1 {
+        margin-bottom: 10px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      select, input, button {
+        padding: 8px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+      }
+
+      button {
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+        border: none;
+      }
+
+      button:hover {
+        background: #1d4ed8;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+
+      th, td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+      }
+
+      th {
+        background: #f1f5f9;
+      }
+
+      tr:hover {
+        background: #f9fafb;
+      }
+
+      .muted {
+        color: #6b7280;
+        font-size: 13px;
+      }
+      .chart-box{
+        height: 260px;
+        max-width: 520px;
+        margin: 10px auto;
+      }
+      .chart-box canvas{
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #chart_gov_status{
+        max-width: 520px;
+        max-height: 260px;
+        margin: 10px auto;
+        display: block;
+      }
+
+      th.sortable {
+        cursor: pointer;
+        user-select: none;
+      }
+      th.sortable:hover {
+        background: #e2e8f0;
+      }
+
+      /* ===== Tabs UI ===== */
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .tab-btn {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        background: #c6c5c5;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .tab-btn.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.active {
+        display: block;
+      }
+
+      .reset-btn{
+        background:#e5e7eb;
+        color:#111827;
+        border:1px solid #cbd5e1;
+        cursor:pointer;
+      }
+      .reset-btn:hover{
+        background:#d1d5db;
+      }
+
+      .hidden { display: none !important; }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 16px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .two-col { grid-template-columns: 1fr; }
+      }
+
+      .chart-box{
+        height: 260px;
+        max-width: 520px;
+        margin: 8px auto;
+      }
+
+      /* ===========================================================
+        ✅ เพิ่มใหม่: Sidebar Accordion (ไม่ลบ ไม่แก้ของเดิม)
+        =========================================================== */
+      .menu {
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 8px;
+        margin-bottom: 8px;
+      }
+
+      .menu-title {
+        font-weight: 600;
+        cursor: pointer;
+        padding: 6px 4px;
+        user-select: none;
+      }
+
+      .menu-title:hover {
+        background: #f1f5f9;
+        border-radius: 6px;
+      }
+
+      .submenu {
+        display: none;
+        margin-top: 8px;
+        padding-left: 6px;
+      }
+
+      .menu.open .submenu {
+        display: block;
+      }
+
+      .submenu label {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      .submenu select,
+      .submenu input {
+        width: 100%;
+        margin-top: 4px;
+      }
+      /* ===== แก้กราฟโดนบีบ / แบน ===== */
+.chart-wrapper {
+  width: 100%;
+  max-width: 420px;
+  height: 420px;        /* สำคัญมาก → ทำให้เป็นสี่เหลี่ยม */
+  margin: 0 auto;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+.summary-grid {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.summary-grid .card {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  min-width: 120px;
+  text-align: center;
+}
+
+  </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  </head>
+  <body>
+
+    <h1>Job Admin Dashboard</h1>
+    <p class="muted">Static analysis from Neon PostgreSQL (manual SQL)</p>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab_main">ตารางหลัก</button>
+      <button class="tab-btn" data-tab="tab_dash">Dashboard</button>
+      <button class="tab-btn" data-tab="tab_gov">Governance</button>
+
+      <!-- ✅ อันนี้ของ Admin -->
+      <button class="tab-btn" data-tab="tab_admin">
+        แดชบอร์ดผู้ดูแลระบบ (Admin / Owner)
+      </button>
+      <button class="tab-btn" data-tab="tab_employer">
+        แดชบอร์ดผู้ว่าจ้าง (Employer)
+      </button>
+      <button class="tab-btn" data-tab="tab_seeker">
+        แดชบอร์ดผู้หางาน (Job Seeker)
+      </button>
+      <button class="tab-btn" data-tab="tab_lco">
+        แดชบอร์ดฝ่ายกฎหมาย / ตรวจสอบ (LCO)
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="filters">
+
+        <select id="geography">
+          <option value>ทุกภาค</option>
+        </select>
+
+        <select id="province" disabled>
+          <option value>ทุกจังหวัด</option>
+        </select>
+
+        <select id="district" disabled>
+          <option value>ทุกอำเภอ</option>
+        </select>
+
+        <select id="job_type">
+          <option value>ทุกประเภท</option>
+          <option value="1">Service</option>
+          <option value="2">Factory</option>
+          <option value="3">Transportation</option>
+          <option value="4">Office</option>
+          <option value="5">Sales</option>
+          <option value="6">IT</option>
+          <option value="7">Elder</option>
+        </select>
+
+        <input id="min_wage" type="number" placeholder="ค่าแรงขั้นต่ำ">
+        <input id="max_wage" type="number" placeholder="ค่าแรงสูงสุด">
+
+        <!-- <button onclick="loadData()">Filter</button> -->
+        <button class="primary-btn"
+          onclick="loadData(); loadDashboardTables();">Filter</button>
+
+        <button type="button" class="reset-btn"
+          onclick="resetFilters()">Reset</button>
+
+      </div>
+    </div>
+
+    <!-- ===== Tabs (ครอบการแสดงผลเป็น 3 ส่วน) ===== -->
+
+    <!-- ===== TAB 1: ตารางหลัก ===== -->
+    <div id="tab_main" class="tab-panel active">
+      <div class="card">
+        <table id="result"></table>
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: Dashboard (ภาพรวม + ตลาดแรงงาน + กระจายพื้นที่) ===== -->
+    <div id="tab_dash" class="tab-panel">
+      <div class="card">
+        <h3>ภาพรวมระบบ (System Overview)</h3>
+        <div id="dash_overview"></div>
+      </div>
+
+      <div class="card">
+        <h3>ตลาดแรงงาน (Labor Market Analysis)</h3>
+        <table id="dash_market"></table>
+        <div class="chart-box hidden" id="market_chart_box">
+          <canvas id="chart_market"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>การกระจายพื้นที่ (Geographic Distribution)</h3>
+        <table id="dash_geo"></table>
+
+        <div class="chart-box hidden" id="geo_chart_box">
+          <canvas id="chart_geo_posts"></canvas>
+        </div>
+      </div>
+
+    </div>
+    <div id="tab_gov" class="tab-panel">
+
+      <!-- Card: Status -->
+      <div class="card">
+        <h3>Governance Status</h3>
+
+        <div>
+          <table id="dash_gov_status"></table>
+
+          <div class="chart-box hidden" id="gov_status_chart_box">
+            <canvas id="chart_gov_status"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Card: Workload by LCO (แยก card ใหม่) -->
+      <div class="card">
+        <h3>Workload by LCO</h3>
+        <table id="dash_gov_lco"></table>
+        <div id="dash_gov_lco_pager"></div>
+      </div>
+
+    </div>
+
+    <!-- Card: Status -->
+    <div id="tab_admin" class="tab-panel">
+      <div class="layout">
+
+        <!-- ===== Sidebar ซ้าย (เพิ่มใหม่) ===== -->
+        <aside class="sidebar">
+
+          <!-- จำนวนผู้ใช้ทั้งหมด -->
+          <div class="menu">
+            <div class="menu-title">จำนวนผู้ใช้ทั้งหมด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li onclick="loadUserRole()">บทบาทผู้ใช้</li>
+                <li onclick="loadUserStatus()">สถานะผู้ใช้</li>
+                <li onclick="loadUserByDate()">วันที่สมัคร</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 2. จำนวนผู้หางานทั้งหมด -->
+          <div class="menu">
+            <div class="menu-title">จำนวนผู้หางานทั้งหมด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li onclick="loadSeekerCompletion()">สมัครครบขั้นตอนหรือไม่</li>
+                <li>วันที่สมัคร</li>
+                <li>จังหวัด</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 3. จำนวนผู้ว่าจ้างทั้งหมด -->
+          <div class="menu">
+            <div class="menu-title">จำนวนผู้ว่าจ้างทั้งหมด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ผ่านการยืนยันหรือไม่</li>
+                <li>วันที่สมัคร</li>
+                <li>จังหวัด</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 4. จำนวนประกาศงานทั้งหมด -->
+          <div class="menu">
+            <div class="menu-title">จำนวนประกาศงานทั้งหมด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li onclick="loadJobApprovalStatus()">สถานะการอนุมัติ</li>
+                <li>ประเภทงาน</li>
+                <li>ผู้ว่าจ้าง</li>
+                <li>จังหวัด</li>
+                <li>วันที่ประกาศ</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 5. จำนวนงานที่รอการอนุมัติ -->
+          <div class="menu">
+            <div class="menu-title">จำนวนงานที่รอการอนุมัติ</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ผู้ว่าจ้าง</li>
+                <li>จังหวัด</li>
+                <li>วันที่ประกาศ</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 6. สถิติประกาศงานแยกตามสถานะ -->
+          <div class="menu">
+            <div class="menu-title">สถิติประกาศงานแยกตามสถานะ</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะการอนุมัติ</li>
+                <li>ผู้ว่าจ้าง</li>
+                <li>ประเภทงาน</li>
+                <li>จังหวัด</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 7. แนวโน้มการประกาศงานตามเวลา -->
+          <div class="menu">
+            <div class="menu-title">แนวโน้มการประกาศงานตามเวลา</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>รายวัน / รายเดือน</li>
+                <li>สถานะงาน</li>
+                <li>จังหวัด</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 8. สถิติการสมัครงานแยกตามสถานะ -->
+          <div class="menu">
+            <div class="menu-title">สถิติการสมัครงานแยกตามสถานะ</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะการสมัคร</li>
+                <li>ผู้ว่าจ้าง</li>
+                <li>ผู้หางาน</li>
+                <li>จังหวัด</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 9. งานที่มีผู้สมัครมากที่สุด -->
+          <div class="menu">
+            <div class="menu-title">งานที่มีผู้สมัครมากที่สุด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>จังหวัด</li>
+                <li>ประเภทงาน</li>
+                <li>สถานะงาน</li>
+                <li>ช่วงเวลา</li>
+                <li>จำนวนอันดับที่แสดง</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 10. รายการใบสมัครล่าสุด -->
+          <div class="menu">
+            <div class="menu-title">รายการใบสมัครล่าสุด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ผู้ว่าจ้าง</li>
+                <li>สถานะการสมัคร</li>
+                <li>ช่วงเวลา</li>
+                <li>จำนวนรายการ</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 11. สรุปรายงานการร้องเรียน -->
+          <div class="menu">
+            <div class="menu-title">สรุปรายงานการร้องเรียน</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะรายงาน</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 12. งานที่ถูกร้องเรียนมากที่สุด -->
+          <div class="menu">
+            <div class="menu-title">งานที่ถูกร้องเรียนมากที่สุด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะรายงาน</li>
+                <li>จังหวัด</li>
+                <li>ช่วงเวลา</li>
+                <li>จำนวนอันดับที่แสดง</li>
+              </ul>
+            </div>
+          </div>
+        </aside>
+        <main class="content">
+
+          <div id="admin_user_role_section"
+            class="card"
+            style="display:none;">
+            <h3>สถิติผู้ใช้แยกตามบทบาท</h3>
+            <table id="admin_user_role_table"></table>
+          </div>
+
+          <div id="admin_user_status_section"
+            class="card"
+            style="display:none;">
+            <h3>สถิติผู้ใช้แยกตามสถานะ</h3>
+            <table id="admin_user_status_table"></table>
+          </div>
+
+          <div id="admin_user_date_section"
+            class="card"
+            style="display:none;">
+            <h3>สถิติผู้ใช้แยกตามวันที่สมัคร</h3>
+            <table id="admin_user_date_table"></table>
+          </div>
+
+          <!-- ===== สถานะการอนุมัติประกาศงาน ===== -->
+          <div id="admin_job_approval_section" class="card"
+            style="display:none;">
+            <h3>สถานะการอนุมัติประกาศงาน</h3>
+
+            <!-- summary -->
+            <div id="admin_job_approval_summary" class="summary-grid"></div>
+
+            <!-- charts -->
+            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+              <canvas id="jobApprovalPie" width="300"></canvas>
+              <canvas id="jobApprovalBar" width="400"></canvas>
+            </div>
+
+            <!-- table -->
+            <table id="admin_job_approval_table"></table>
+          </div>
+
+          <!-- ===== จำนวนผู้หางานทั้งหมด ===== -->
+          <!-- สมัครครบขั้นตอนหรือไม่ -->
+          <div id="admin_seeker_complete_section"
+            class="card"
+            style="display:none;">
+
+            <h3>ผู้หางาน: สมัครครบขั้นตอนหรือไม่</h3>
+
+            <!-- Summary -->
+            <div id="admin_seeker_complete_summary"
+              style="display:flex; gap:16px; margin-bottom:12px;">
+            </div>
+
+            <!-- Pie chart -->
+            <div class="chart-box">
+              <canvas id="chart_seeker_complete"></canvas>
+
+            </div>
+
+            <!-- Table -->
+            <table id="admin_seeker_complete_table"></table>
+          </div>
+
+        </main>
+      </div> <!-- ✅ ปิด layout -->
+    </div> <!-- ✅ ปิด tab_admin -->
+    <!-- ===== TAB: Employer Dashboard ===== -->
+    <div id="tab_employer" class="tab-panel">
+
+      <div class="layout">
+
+        <!-- ===== Sidebar ซ้าย (Employer) ===== -->
+        <aside class="sidebar">
+
+          <!-- 13. ภาพรวมงานของผู้ว่าจ้าง -->
+          <div class="menu">
+            <div class="menu-title">ภาพรวมงานของผู้ว่าจ้าง</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ผู้ว่าจ้าง</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 14. รายการประกาศงานของผู้ว่าจ้าง -->
+          <div class="menu">
+            <div class="menu-title">รายการประกาศงานของผู้ว่าจ้าง</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะงาน</li>
+                <li>ประเภทงาน</li>
+                <li>จังหวัด</li>
+                <li>คำค้นหา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 15. ใบสมัครงานในประกาศของผู้ว่าจ้าง -->
+          <div class="menu">
+            <div class="menu-title">ใบสมัครงานในประกาศของผู้ว่าจ้าง</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ประกาศงาน</li>
+                <li>สถานะการสมัคร</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 16. งานของผู้ว่าจ้างที่มีผู้สมัครมากที่สุด -->
+          <div class="menu">
+            <div
+              class="menu-title">งานของผู้ว่าจ้างที่มีผู้สมัครมากที่สุด</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ช่วงเวลา</li>
+                <li>จำนวนอันดับที่แสดง</li>
+              </ul>
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- ===== Content ขวา (ยังเว้นไว้ก่อน) ===== -->
+        <div class="content">
+          <!-- ใส่ table / chart ของ Employer ทีหลังได้ -->
+        </div>
+
+      </div> <!-- ปิด layout -->
+
+    </div> <!-- ปิด tab_employer -->
+    <!-- ===== TAB: Job Seeker Dashboard ===== -->
+    <div id="tab_seeker" class="tab-panel">
+
+      <div class="layout">
+
+        <!-- ===== Sidebar ซ้าย (Job Seeker) ===== -->
+        <aside class="sidebar">
+
+          <!-- 17. ภาพรวมการสมัครงานของผู้หางาน -->
+          <div class="menu">
+            <div class="menu-title">ภาพรวมการสมัครงานของผู้หางาน</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>ผู้หางาน (บังคับ)</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 18. รายการงานที่สมัครแล้ว -->
+          <div class="menu">
+            <div class="menu-title">รายการงานที่สมัครแล้ว</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะการสมัคร</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 19. งานที่ได้เริ่มทำงานแล้ว -->
+          <div class="menu">
+            <div class="menu-title">งานที่ได้เริ่มทำงานแล้ว</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะการจ้างงาน</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- ===== Content ขวา (เว้นไว้ก่อน) ===== -->
+        <div class="content">
+          <!-- ตาราง / กราฟ / การ์ด ของ Job Seeker -->
+        </div>
+
+      </div> <!-- ปิด layout -->
+
+    </div> <!-- ปิด tab_seeker -->
+
+    <!-- ===== TAB: LCO Dashboard ===== -->
+    <!-- ===== TAB: LCO Dashboard ===== -->
+    <div id="tab_lco" class="tab-panel">
+
+      <div class="layout">
+
+        <!-- ===== Sidebar ซ้าย (LCO) ===== -->
+        <aside class="sidebar">
+
+          <!-- 20. งานที่รอการตรวจสอบและอนุมัติ -->
+          <div class="menu">
+            <div class="menu-title">งานที่รอการตรวจสอบและอนุมัติ</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>เจ้าหน้าที่ตรวจสอบ</li>
+                <li>จังหวัด</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 21. รายการรายงานการร้องเรียน -->
+          <div class="menu">
+            <div class="menu-title">รายการรายงานการร้องเรียน</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>สถานะรายงาน</li>
+                <li>ประกาศงาน</li>
+                <li>ผู้ถูกรายงาน</li>
+                <li>ผู้แจ้ง</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 22. งานที่ตรวจสอบโดยเจ้าหน้าที่ -->
+          <div class="menu">
+            <div class="menu-title">งานที่ตรวจสอบโดยเจ้าหน้าที่</div>
+            <div class="submenu">
+              <ul class="dot-menu">
+                <li>เจ้าหน้าที่ตรวจสอบ (บังคับ)</li>
+                <li>สถานะงาน</li>
+                <li>ช่วงเวลา</li>
+              </ul>
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- ===== Content ขวา (เว้นไว้ก่อน) ===== -->
+        <div class="content">
+          <!-- ตาราง / กราฟ / รายละเอียดการตรวจสอบ -->
+        </div>
+
+      </div> <!-- ปิด layout -->
+
+    </div> <!-- ปิด tab_lco -->
+
+    <script>
+
+  const tableState = {}; 
+  // ต้องอยู่ก่อน renderTable เสมอ
+
+
+  let chartMarket = null;
+  let chartGovStatus = null;
+  let chartGeoPosts = null;
+
+  const API_BASE = "http://localhost:3000";
+
+  function resizeVisibleCharts() {
+    // ถ้า tab_gov แสดงอยู่ ค่อย resize
+    const govTab = document.getElementById("tab_gov");
+    if (govTab && govTab.classList.contains("active")) {
+      if (chartGovStatus) {
+        chartGovStatus.resize();
+        chartGovStatus.update();
+      }
+    }
+
+    // เผื่ออยากให้ tab_dash ก็ชัวร์ด้วย
+    const dashTab = document.getElementById("tab_dash");
+    if (dashTab && dashTab.classList.contains("active")) {
+      if (chartMarket) {
+        chartMarket.resize();
+        chartMarket.update();
+      }
+      if (chartGeoPosts) {
+        chartGeoPosts.resize();
+        chartGeoPosts.update();
+      }
+    }
+  }
+
+  function initTabs() {
+    const buttons = document.querySelectorAll(".tab-btn");
+    const panels = document.querySelectorAll(".tab-panel");
+
+    buttons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        buttons.forEach(b => b.classList.remove("active"));
+        panels.forEach(p => p.classList.remove("active"));
+
+        btn.classList.add("active");
+        const targetId = btn.getAttribute("data-tab");
+        document.getElementById(targetId)?.classList.add("active");
+
+        // ✅ สำคัญ: ให้ Chart.js คำนวณขนาดใหม่หลังแท็บโชว์
+        requestAnimationFrame(() => resizeVisibleCharts());
+      });
+
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await initGeographies();
+    wireEvents();
+    initTabs(); // ✅ เพิ่มบรรทัดนี้
+  });
+
+  function wireEvents() {
+    document.getElementById("geography").addEventListener("change", async (e) => {
+      const geographyId = e.target.value;
+      await loadProvincesByGeography(geographyId);
+
+      // รีเซ็ตอำเภอทุกครั้งเมื่อภาคเปลี่ยน
+      resetDistricts();
+    });
+
+    // เพิ่ม: พอเลือกจังหวัด → โหลดอำเภอ
+    document.getElementById("province").addEventListener("change", async (e) => {
+      const provinceId = e.target.value;
+      await loadDistrictsByProvince(provinceId);
+    });
+  }
+
+  function resetDistricts() {
+    const distSelect = document.getElementById("district");
+    distSelect.disabled = true;
+    distSelect.innerHTML = `<option value="">ทุกอำเภอ</option>`;
+  }
+
+  function clearAllOutputs() {
+    // เคลียร์ตารางหลัก
+    const result = document.getElementById("result");
+    if (result) result.innerHTML = "";
+
+    const geoBox = document.getElementById("geo_chart_box");
+    if (geoBox) geoBox.classList.add("hidden");
+
+    const marketBox = document.getElementById("market_chart_box");
+    if (marketBox) marketBox.classList.add("hidden");
+
+    const govBox = document.getElementById("gov_status_chart_box");
+    if (govBox) govBox.classList.add("hidden");
+
+    // เคลียร์ตาราง dashboard
+    ["dash_market","dash_geo","dash_gov_status","dash_gov_lco","dash_demo"].forEach(id => {
+      const t = document.getElementById(id);
+      if (t) t.innerHTML = "";
+    });
+
+    // เคลียร์ overview
+    const ov = document.getElementById("dash_overview");
+    // if (ov) ov.innerHTML = `<div class="muted">กด Filter เพื่อแสดงข้อมูล</div>`;
+    if (ov) ov.innerHTML = `<div class="muted"></div>`;
+
+    // ปิดกราฟ (destroy)
+    if (chartMarket) { chartMarket.destroy(); chartMarket = null; }
+    if (chartGovStatus) { chartGovStatus.destroy(); chartGovStatus = null; }
+    if (chartGeoPosts) { chartGeoPosts.destroy(); chartGeoPosts = null; }
+    
+  }
+
+  async function resetFilters() {
+    // reset ค่า inputs/select
+    document.getElementById("geography").value = "";
+    document.getElementById("job_type").value = "";
+    document.getElementById("min_wage").value = "";
+    document.getElementById("max_wage").value = "";
+
+    // reset จังหวัด + อำเภอ (กลับไปเหมือนเริ่มต้น)
+    const prov = document.getElementById("province");
+    prov.innerHTML = `<option value="">ทุกจังหวัด</option>`;
+    prov.disabled = true;
+
+    resetDistricts();
+
+    // ล้างสถานะ sort
+    Object.keys(tableState).forEach(k => delete tableState[k]);
+
+    // ✅ ล้างผลลัพธ์บนหน้าจอ (ไม่ยิง API)
+    clearAllOutputs();
+  }
+
+  async function initGeographies() {
+    const geoSelect = document.getElementById("geography");
+
+    try {
+      const res = await fetch(`${API_BASE}/geographies`);
+      const geos = await res.json();
+
+      geoSelect.innerHTML = `<option value="">ทุกภาค</option>`;
+      geos.forEach(g => {
+        geoSelect.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+      });
+
+    } catch (err) {
+      console.error(err);
+      geoSelect.innerHTML = `<option value="">โหลดภาคไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadProvincesByGeography(geographyId) {
+    const provSelect = document.getElementById("province");
+    provSelect.disabled = true;
+    provSelect.innerHTML = `<option value="">ทุกจังหวัด</option>`;
+
+    resetDistricts();
+
+    // ถ้าไม่เลือกภาค → ให้โหลดจังหวัดทั้งหมด (หรือจะปล่อยว่างก็ได้)
+    const url = geographyId
+      ? `${API_BASE}/provinces?geography_id=${encodeURIComponent(geographyId)}`
+      : `${API_BASE}/provinces`;
+
+    try {
+      const res = await fetch(url);
+      const provinces = await res.json();
+
+      provinces.forEach(p => {
+        provSelect.innerHTML += `<option value="${p.id}">${p.name_th}</option>`;
+      });
+
+      provSelect.disabled = false;
+    } catch (err) {
+      console.error(err);
+      provSelect.innerHTML = `<option value="">โหลดจังหวัดไม่สำเร็จ</option>`;
+    }
+  }
+
+  async function loadDistrictsByProvince(provinceId) {
+    const distSelect = document.getElementById("district");
+    distSelect.disabled = true;
+    distSelect.innerHTML = `<option value="">ทุกอำเภอ</option>`;
+
+    // ถ้ายังไม่เลือกจังหวัด → ไม่โหลด
+    if (!provinceId) return;
+
+    const url = `${API_BASE}/districts?province_id=${encodeURIComponent(provinceId)}`;
+
+    try {
+      const res = await fetch(url);
+      const districts = await res.json();
+
+      districts.forEach(d => {
+        distSelect.innerHTML += `<option value="${d.id}">${d.name_th}</option>`;
+      });
+
+      distSelect.disabled = false;
+    } catch (err) {
+      console.error(err);
+      distSelect.innerHTML = `<option value="">โหลดอำเภอไม่สำเร็จ</option>`;
+    }
+  }
+
+
+  async function loadData() {
+    const params = new URLSearchParams({
+      geography: document.getElementById('geography').value,
+      province: document.getElementById('province').value,
+      district: document.getElementById('district').value,
+      job_type: document.getElementById('job_type').value,
+      min_wage: document.getElementById('min_wage').value,
+      max_wage: document.getElementById('max_wage').value
+    });
+
+    const res = await fetch(`${API_BASE}/jobs?${params}`);
+    const data = await res.json();
+
+    renderTable(
+      "result",
+      [
+        { key: "geography", label: "ภาค", sortable: true },
+        { key: "province",  label: "จังหวัด", sortable: true },
+        { key: "district",  label: "อำเภอ", sortable: true },
+        { key: "job_type",  label: "ประเภท", sortable: true },
+        { key: "total_jobs", label: "จำนวนงาน", sortable: true },
+        { key: "avg_wage",   label: "ค่าแรงเฉลี่ย", sortable: true },
+      ],
+      Array.isArray(data) ? data : []
+    );
+  }
+
+  function escapeHtml(v) {
+    if (v === null || v === undefined) return "";
+    return String(v)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function renderTable(tableId, columns, rows) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    // init state
+    if (!tableState[tableId]) tableState[tableId] = { sortKey: null, sortDir: "desc", rows: [] };
+    const state = tableState[tableId];
+
+    state.rows = Array.isArray(rows) ? rows : [];
+
+    // sort ก่อน render (ถ้ามี sortKey)
+    const displayRows = state.sortKey
+      ? sortRows(state.rows, state.sortKey, state.sortDir)
+      : state.rows;
+
+    // สร้าง thead/tbody ชัดเจน (กัน browser แทรก tbody แล้วพฤติกรรมแปลกๆ)
+    const theadHtml = `
+      <thead>
+        <tr>
+          ${columns.map(c => {
+            const isSortable = !!c.sortable;
+            const arrow = (state.sortKey === c.key)
+              ? (state.sortDir === "asc" ? " ▲" : " ▼")
+              : "";
+            return `
+              <th ${isSortable ? 'class="sortable"' : ""} data-key="${c.key}">
+                ${escapeHtml(c.label)}${arrow}
+              </th>
+            `;
+          }).join("")}
+        </tr>
+      </thead>
+    `;
+
+    const tbodyHtml = `
+      <tbody>
+        ${
+          (!displayRows || displayRows.length === 0)
+            ? `<tr><td class="muted" colspan="${columns.length}">ไม่มีข้อมูล</td></tr>`
+            : displayRows.map(r => `
+                <tr>
+                  ${columns.map(c => `<td>${escapeHtml(r[c.key])}</td>`).join("")}
+                </tr>
+              `).join("")
+        }
+      </tbody>
+    `;
+
+    table.innerHTML = theadHtml + tbodyHtml;
+
+    // ✅ Event Delegation: ผูกคลิกครั้งเดียวที่ thead
+    const thead = table.querySelector("thead");
+    if (thead) {
+      thead.onclick = (e) => {
+        const th = e.target.closest("th.sortable");
+        if (!th) return;
+
+        const key = th.dataset.key;
+
+        if (state.sortKey === key) {
+          state.sortDir = (state.sortDir === "asc") ? "desc" : "asc";
+        } else {
+          state.sortKey = key;
+          state.sortDir = "desc"; // เริ่มต้น มาก -> น้อย
+        }
+
+        renderTable(tableId, columns, state.rows);
+      };
+    }
+  }
+
+  //const tableState = {}; // เก็บสถานะ sort ของแต่ละ tableId
+
+  function parseNumber(v) {
+    if (v === null || v === undefined || v === "") return null;
+    // รองรับ "1,234.56"
+    const n = Number(String(v).replaceAll(",", ""));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function sortRows(rows, key, dir) {
+    const sign = dir === "asc" ? 1 : -1;
+
+    return [...rows].sort((a, b) => {
+      const av = parseNumber(a[key]);
+      const bv = parseNumber(b[key]);
+
+      // ถ้าเป็นตัวเลขทั้งคู่ → sort แบบเลข
+      if (av !== null && bv !== null) return (av - bv) * sign;
+
+      // ถ้าอันใดอันหนึ่งเป็น null → ดันไปท้าย
+      if (av === null && bv !== null) return 1;
+      if (av !== null && bv === null) return -1;
+
+      // ถ้าไม่ใช่เลข → sort แบบตัวอักษร
+      return String(a[key] ?? "").localeCompare(String(b[key] ?? ""), "th") * sign;
+    });
+  }
+
+  function renderOverviewCards(data) {
+    const el = document.getElementById("dash_overview");
+    if (!el) return;
+
+    if (!data || data.error) {
+      el.innerHTML = `<div class="muted">โหลดไม่สำเร็จ: ${escapeHtml(data?.error || "")}</div>`;
+      return;
+    }
+
+    // ทำเป็นตารางเล็กๆ (ง่ายสุด)
+    el.innerHTML = `
+      <table>
+        <tr><th>ตัวชี้วัด</th><th>ค่า</th></tr>
+        <tr><td>จำนวน Job Posts ทั้งหมด</td><td>${escapeHtml(data.total_jobposts)}</td></tr>
+        <tr><td>จำนวน Applications</td><td>${escapeHtml(data.total_applications)}</td></tr>
+        <tr><td>จำนวน Employments (ได้งาน)</td><td>${escapeHtml(data.total_employments)}</td></tr>
+        <tr><td>Conversion rate (สมัคร → ได้งาน)</td><td>${escapeHtml(data.conversion_rate)}</td></tr>
+        <tr><td>จำนวน Jobseekers ทั้งหมด</td><td>${escapeHtml(data.total_jobseekers)}</td></tr>
+        <tr><td>Jobseekers ใหม่ในช่วงเวลา</td><td>${escapeHtml(data.new_jobseekers_in_range)}</td></tr>
+      </table>
+    `;
+  }
+
+  async function loadDashboardTables() {
+    const params = new URLSearchParams({
+      geography: document.getElementById('geography').value,
+      province: document.getElementById('province').value,
+      district: document.getElementById('district').value,
+      job_type: document.getElementById('job_type').value,
+      min_wage: document.getElementById('min_wage').value,
+      max_wage: document.getElementById('max_wage').value
+    });
+
+    try {
+      const [
+        overview,
+        market,
+        geo,
+        govStatus,
+        govLco,
+        demo
+      ] = await Promise.all([
+        fetch(`${API_BASE}/dashboard/overview?${params}`).then(r => r.json()),
+        fetch(`${API_BASE}/dashboard/market?${params}`).then(r => r.json()),
+        fetch(`${API_BASE}/dashboard/geo/area?${params}`).then(r => r.json()),
+        fetch(`${API_BASE}/dashboard/gov/status?${params}`).then(r => r.json()),
+        fetch(`${API_BASE}/dashboard/gov/lco?${params}`).then(r => r.json()),
+        fetch(`${API_BASE}/dashboard/behavior/demographics?${params}`).then(r => r.json()),
+      ]);
+
+      // A
+      renderOverviewCards(overview);
+
+      // B market
+      renderTable("dash_market",
+        [
+          { key: "job_type", label: "ประเภทงาน", sortable: true },
+          { key: "posts", label: "จำนวนโพสต์", sortable: true },
+          { key: "applications", label: "จำนวนสมัคร", sortable: true },
+          { key: "hired", label: "ได้งาน", sortable: true },
+          { key: "apps_per_post", label: "สมัคร/โพสต์", sortable: true },
+          { key: "hire_rate", label: "อัตราได้งาน", sortable: true },
+        ],
+        Array.isArray(market) ? market : []
+      );
+
+      
+
+      // C geo area
+      renderTable("dash_geo",
+        [
+          { key: "geography", label: "ภาค" },
+          { key: "province", label: "จังหวัด" },
+          { key: "district", label: "อำเภอ" },
+          { key: "posts", label: "จำนวนโพสต์", sortable: true },
+          { key: "applications", label: "จำนวนสมัคร", sortable: true },
+          { key: "apps_per_post", label: "สมัคร/โพสต์", sortable: true },
+          { key: "avg_wage", label: "ค่าแรงเฉลี่ย", sortable: true },
+          { key: "avg_workers_needed", label: "รับคนเฉลี่ย", sortable: true },
+        ],
+        Array.isArray(geo) ? geo : []
+      );
+
+      // D gov status
+      renderTable("dash_gov_status",
+        [
+          { key: "approval_status", label: "สถานะ", sortable: true },
+          { key: "posts_count", label: "จำนวนโพสต์", sortable: true },
+          { key: "share", label: "สัดส่วน", sortable: true },
+        ],
+        Array.isArray(govStatus) ? govStatus : []
+      );
+
+      // D gov lco
+      renderTable("dash_gov_lco",
+        [
+          { key: "lco_id", label: "LCO ID" },
+          { key: "total_assigned", label: "งานทั้งหมด", sortable: true },
+          { key: "pending_count", label: "Pending", sortable: true },
+          { key: "approved_count", label: "Approved", sortable: true },
+          { key: "rejected_count", label: "Rejected", sortable: true },
+          { key: "avg_review_hours", label: "ชั่วโมงตรวจเฉลี่ย", sortable: true },
+          { key: "total_appeals", label: "Appeal รวม", sortable: true },
+        ],
+        Array.isArray(govLco) ? govLco : []
+      );
+
+      // E demographics
+      renderTable("dash_demo",
+        [
+          { key: "job_type", label: "ประเภทงาน" },
+          { key: "gender", label: "เพศ" },
+          { key: "age_bucket", label: "ช่วงอายุ", sortable: true },
+          { key: "unique_applicants", label: "ผู้สมัครไม่ซ้ำ", sortable: true },
+          { key: "applications", label: "จำนวนสมัคร", sortable: true },
+        ],
+        Array.isArray(demo) ? demo : []
+      );
+
+      renderMarketChart(Array.isArray(market) ? market : []);
+      renderGovStatusChart(Array.isArray(govStatus) ? govStatus : []);
+      renderGeoPostsChart(Array.isArray(geo) ? geo : []);
+      
+    } catch (err) {
+      console.error("❌ loadDashboardTables error:", err);
+    }
+  }
+
+  function renderMarketChart(rows) {
+    const ctx = document.getElementById("chart_market");
+    const box = document.getElementById("market_chart_box");
+    if (!ctx || !box) return;
+
+    if (!rows || rows.length === 0) {
+      if (chartMarket) { chartMarket.destroy(); chartMarket = null; }
+      box.classList.add("hidden");
+      return;
+    }
+
+    box.classList.remove("hidden");
+
+    const labels = rows.map(r => r.job_type);
+    const posts = rows.map(r => Number(r.posts || 0));
+    const applications = rows.map(r => Number(r.applications || 0));
+    const hired = rows.map(r => Number(r.hired || 0));
+
+    if (chartMarket) chartMarket.destroy();
+
+    chartMarket = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          { label: "Posts", data: posts },
+          { label: "Applications", data: applications },
+          { label: "Hired", data: hired },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "top" } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
+
+  function renderGovStatusChart(rows) {
+    const ctx = document.getElementById("chart_gov_status");
+    const box = document.getElementById("gov_status_chart_box");
+    if (!ctx || !box) return;
+
+    if (!rows || rows.length === 0) {
+      if (chartGovStatus) { chartGovStatus.destroy(); chartGovStatus = null; }
+      box.classList.add("hidden");
+      return;
+    }
+
+    box.classList.remove("hidden");
+
+    const labels = rows.map(r => r.approval_status);
+    const counts = rows.map(r => Number(r.posts_count || 0));
+
+    if (chartGovStatus) chartGovStatus.destroy();
+
+    chartGovStatus = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels,
+        datasets: [{ label: "Posts", data: counts }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { position: "top" } }
+      }
+    });
+
+      // ✅ ถ้าตอนนี้แท็บยังไม่ active ให้รอจนโชว์แล้วค่อย resize
+      requestAnimationFrame(() => {
+        if (chartGovStatus) {
+          chartGovStatus.resize();
+          chartGovStatus.update();
+        }
+      });
+
+  }
+
+
+  function renderGeoPostsChart(rows) {
+    const box = document.getElementById("geo_chart_box");
+    const ctx = document.getElementById("chart_geo_posts");
+
+    // กันพัง
+    if (!ctx) return;
+
+    // ถ้าไม่มีข้อมูล -> ซ่อน + ลบกราฟเดิม
+    if (!rows || rows.length === 0) {
+      if (chartGeoPosts) { chartGeoPosts.destroy(); chartGeoPosts = null; }
+      if (box) box.classList.add("hidden");
+      return;
+    }
+
+    // ดึงรายชื่อจังหวัด/อำเภอที่มีในข้อมูล
+    const provinces = [...new Set(rows.map(r => r.province).filter(Boolean))];
+    const districts  = [...new Set(rows.map(r => r.district).filter(Boolean))];
+
+    // ✅ เลือกครบ ภาค+จังหวัด+อำเภอ (เหลืออำเภอเดียว) -> ซ่อนกราฟ
+    if (districts.length === 1) {
+      if (chartGeoPosts) { chartGeoPosts.destroy(); chartGeoPosts = null; }
+      if (box) box.classList.add("hidden");
+    return;
+    }
+
+    // อย่างอื่นให้โชว์กราฟ
+    if (box) box.classList.remove("hidden");
+
+    // 🟡 จังหวัดเดียว + หลายอำเภอ → Top 10 อำเภอ
+    if (provinces.length === 1 && districts.length > 1) {
+      const byDistrict = new Map();
+      rows.forEach(r => {
+        const key = r.district || "ไม่ระบุอำเภอ";
+        byDistrict.set(key, (byDistrict.get(key) || 0) + Number(r.posts || 0));
+      });
+
+      const sorted = [...byDistrict.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+
+      if (chartGeoPosts) { chartGeoPosts.destroy(); chartGeoPosts = null; }
+
+      chartGeoPosts = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: sorted.map(x => x[0]),
+          datasets: [{ label: "Posts (Top 10 Districts)", data: sorted.map(x => x[1]) }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: true } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      return;
+    }
+
+    // 🔵 หลายจังหวัด → Top 10 จังหวัด
+    const byProvince = new Map();
+    rows.forEach(r => {
+      const key = r.province || "ไม่ระบุจังหวัด";
+      byProvince.set(key, (byProvince.get(key) || 0) + Number(r.posts || 0));
+    });
+
+    const sorted = [...byProvince.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10);
+
+    if (chartGeoPosts) { chartGeoPosts.destroy(); chartGeoPosts = null; }
+
+    chartGeoPosts = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: sorted.map(x => x[0]),
+        datasets: [{ label: "Posts (Top 10 Provinces)", data: sorted.map(x => x[1]) }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+
+  }
+  /* ===========================================================
+    ✅ เพิ่มใหม่ตรงนี้ (ไม่กระทบโค้ดเดิม)
+    Sidebar Accordion – เปิด/ปิดตัวกรองฝั่งซ้าย
+    =========================================================== */
+ // ===============================
+  // Sidebar / Menu toggle
+  // ===============================
+  document.addEventListener("click", (e) => {
+    const title = e.target.closest(".menu-title");
+    if (!title) return;
+
+    const menu = title.parentElement;
+    menu.classList.toggle("open");
+  });
+
+async function loadUserRole() {
+  console.log("โหลดข้อมูล: บทบาทผู้ใช้");
+
+  hideAdminSections();
+
+  // เปิด role
+  const roleSec = document.getElementById("admin_user_role_section");
+  if (roleSec) roleSec.style.display = "block";
+  
+
+
+  try {
+    const res = await fetch("http://localhost:3000/dashboard/users/by-role");
+    const data = await res.json();
+
+    renderTable(
+      "admin_user_role_table",
+      [
+        { key: "role", label: "บทบาทผู้ใช้", sortable: true },
+        { key: "total", label: "จำนวนผู้ใช้", sortable: true },
+      ],
+      Array.isArray(data) ? data : []
+    );
+  } catch (err) {
+    console.error("❌ loadUserRole error:", err);
+  }
+}  
+  // ===================================================
+  // Admin Dashboard – สถานะผู้ใช้
+  // ===================================================
+  async function loadUserStatus() {
+    console.log("โหลดข้อมูล: สถานะผู้ใช้");
+
+    hideAdminSections();
+
+    // เปิด status
+    const statusSec = document.getElementById("admin_user_status_section");
+    if (statusSec) statusSec.style.display = "block";
+
+    try {
+      const res = await fetch("http://localhost:3000/dashboard/users/by-status");
+      const data = await res.json();
+
+      renderTable(
+        "admin_user_status_table",
+        [
+          { key: "status", label: "สถานะผู้ใช้", sortable: true },
+          { key: "total", label: "จำนวนผู้ใช้", sortable: true },
+        ],
+        Array.isArray(data) ? data : []
+      );
+    } catch (err) {
+      console.error("❌ loadUserStatus error:", err);
+    }
+  }
+
+// ===================================================
+// Admin Dashboard – วันที่สมัคร
+// ===================================================
+async function loadUserByDate() {
+  console.log("โหลดข้อมูล: วันที่สมัคร");
+
+  hideAdminSections();
+
+  // 🔹 เปิด date
+  const dateSec = document.getElementById("admin_user_date_section");
+  if (dateSec) dateSec.style.display = "block";
+
+  try {
+    const res = await fetch("http://localhost:3000/dashboard/users/by-date");
+    const data = await res.json();
+  // แปลงวันที่ให้อ่านง่าย (TH)
+  const formattedData = (Array.isArray(data) ? data : []).map(row => ({...row,signup_date: new Date(row.signup_date).toLocaleDateString("th-TH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    }),
+  }));
+
+  renderTable(
+    "admin_user_date_table",
+      [
+        { key: "signup_date", label: "วันที่สมัคร", sortable: true },
+        { key: "total", label: "จำนวนผู้ใช้", sortable: true },
+      ],
+        formattedData
+      );
+
+  } catch (err) {
+    console.error("❌ loadUserByDate error:", err);
+  }
+}
+
+//จำนวนผู้หางานทั้งหมด
+
+//สมัครครบขั้นตอนหรือไม่
+
+let chartSeekerComplete = null;
+
+// =========================
+// วาดกราฟ สมัครครบ / ไม่ครบ
+// =========================
+function renderSeekerCompleteChart(completed, incomplete) {
+  const ctx = document.getElementById("chart_seeker_complete");
+  if (!ctx) return;
+
+  if (chartSeekerComplete) chartSeekerComplete.destroy();
+
+  chartSeekerComplete = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["สมัครครบ", "ยังไม่ครบ"],
+      datasets: [{
+        data: [completed, incomplete],
+        backgroundColor: [
+          "#4CAF50",
+          "#FF9800"
+        ],
+        borderColor: "#ffffff",
+        borderWidth: 4,
+        hoverOffset: 12
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false, // 🔥 ตัวนี้แหละที่แก้กราฟแบน
+      cutout: "65%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            usePointStyle: true,
+            padding: 20,
+            font: { size: 14 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const value = ctx.raw;
+              const percent = ((value / total) * 100).toFixed(1);
+              return `${ctx.label}: ${value.toLocaleString()} คน (${percent}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+
+
+// =========================
+// โหลดข้อมูล สมัครครบขั้นตอนหรือไม่
+// =========================
+async function loadSeekerCompletion() {
+  console.log("โหลดข้อมูล: สมัครครบขั้นตอนหรือไม่");
+
+  hideAdminSections();
+
+  // เปิด section นี้
+  const sec = document.getElementById("admin_seeker_complete_section");
+  if (sec) sec.style.display = "block";
+
+  try {
+    const res = await fetch("http://localhost:3000/api/admin/seeker-completion");
+    const data = await res.json();
+
+    console.log(data);
+
+    // summary cards
+    const summaryBox = document.getElementById("admin_seeker_complete_summary");
+    summaryBox.innerHTML = `
+      <div class="card">
+        <strong>สมัครครบ</strong><br>${data.summary.completed}
+      </div>
+      <div class="card">
+        <strong>ยังไม่ครบ</strong><br>${data.summary.incomplete}
+      </div>
+    `;
+
+    // ✅ วาดกราฟ
+    renderSeekerCompleteChart(
+      data.summary.completed,
+      data.summary.incomplete
+    );
+
+    // table
+    renderTable(
+      "admin_seeker_complete_table",
+      [
+        { key: "profile_id", label: "Profile ID", sortable: true },
+        { key: "completed", label: "สมัครครบหรือไม่", sortable: true }
+      ],
+      data.rows.map(r => ({
+        ...r,
+        completed: r.completed ? "ครบ" : "ยังไม่ครบ"
+      }))
+    );
+
+  } catch (err) {
+    console.error("❌ loadSeekerCompletion error:", err);
+  }
+}
+
+// =========================
+// ซ่อนทุก section admin
+// =========================
+function hideAdminSections() {
+  [
+    "admin_user_role_section",
+    "admin_user_status_section",
+    "admin_user_date_section",
+    "admin_seeker_complete_section",
+    "admin_job_approval_section" // ✅ ต้องเพิ่ม
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+  });
+}
+
+//สถานะการอนุมัติ
+// ===== สถานะการอนุมัติประกาศงาน =====
+let jobApprovalPieChart = null;
+let jobApprovalBarChart = null;
+
+
+async function loadJobApprovalStatus() {
+  console.log("🔥 CLICK: loadJobApprovalStatus");
+
+  hideAdminSections();
+
+  const sec = document.getElementById("admin_job_approval_section");
+  console.log("section =", sec);
+
+  if (sec) sec.style.display = "block";
+
+  try {
+    const res = await fetch("http://localhost:3000/dashboard/jobs/by-approval-status");
+    const rows = await res.json();
+
+    console.log("DATA =", rows);
+
+    renderJobApprovalSummary(rows);
+    renderJobApprovalCharts(rows);
+    renderJobApprovalTable(rows);
+
+  } catch (err) {
+    console.error("❌ loadJobApprovalStatus error:", err);
+  }
+}
+
+function renderJobApprovalSummary(rows) {
+  const box = document.getElementById("admin_job_approval_summary");
+  if (!box) return;
+
+  box.innerHTML = rows.map(r => `
+    <div class="card">
+      <div class="muted">${r.status}</div>
+      <strong>${Number(r.total).toLocaleString()}</strong>
+    </div>
+  `).join("");
+}
+function renderJobApprovalTable(rows) {
+  renderTable(
+    "admin_job_approval_table",
+    [
+      { key: "status", label: "สถานะการอนุมัติ", sortable: true },
+      { key: "total", label: "จำนวนประกาศงาน", sortable: true }
+    ],
+    rows
+  );
+}
+
+
+</script>
+
+  </body>
+</html>
