@@ -238,7 +238,7 @@ const EmploymentsQuartileChart = ({
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg bg-secondary/60 p-3">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected Jobpost</p>
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Selected Job</p>
           <p className="mt-2 text-sm font-semibold text-card-foreground">{activeItem.label}</p>
         </div>
         <div className="rounded-lg bg-secondary/60 p-3">

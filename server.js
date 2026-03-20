@@ -243,6 +243,66 @@ async function hasColumn(pool, tableName, columnName) {
   return rows.length > 0;
 }
 
+async function getJobTitleExpression(pool, jobpostAlias = "jp", jobTypeAlias = "jt") {
+  const expressions = [];
+
+  if (await hasColumn(pool, "jobposts", "job_title")) {
+    expressions.push(`NULLIF(TRIM(${jobpostAlias}.job_title), '')`);
+  }
+
+  if (await hasColumn(pool, "jobposts", "title")) {
+    expressions.push(`NULLIF(TRIM(${jobpostAlias}.title), '')`);
+  }
+
+  expressions.push(`${jobTypeAlias}.job_type`);
+  return `COALESCE(${expressions.join(", ")})`;
+}
+
+async function getApplicationSeekerIdExpression(pool, applicationAlias = "ja") {
+  if (await hasColumn(pool, "job_applications", "worker_id")) {
+    return `${applicationAlias}.worker_id`;
+  }
+
+  if (await hasColumn(pool, "job_applications", "job_seeker_id")) {
+    return `${applicationAlias}.job_seeker_id`;
+  }
+
+  return "NULL";
+}
+
+async function getApplicationStatusExpression(pool, applicationAlias = "ja") {
+  if (await hasColumn(pool, "job_applications", "application_status")) {
+    return `${applicationAlias}.application_status`;
+  }
+
+  if (await hasColumn(pool, "job_applications", "status")) {
+    return `${applicationAlias}.status`;
+  }
+
+  return null;
+}
+
+async function getProfileJoinCondition(pool, jobSeekerAlias = "js", profileAlias = "pr") {
+  const hasSeekerUserId = await hasColumn(pool, "job_seekers", "user_id");
+  const hasSeekerProfileId = await hasColumn(pool, "job_seekers", "profile_id");
+  const hasProfileId = await hasColumn(pool, "profiles", "id");
+  const hasProfileProfileId = await hasColumn(pool, "profiles", "profile_id");
+
+  if (hasSeekerUserId && hasProfileId) {
+    return `${profileAlias}.id = ${jobSeekerAlias}.user_id`;
+  }
+
+  if (hasSeekerProfileId && hasProfileProfileId) {
+    return `${profileAlias}.profile_id = ${jobSeekerAlias}.profile_id`;
+  }
+
+  if (hasSeekerProfileId && hasProfileId) {
+    return `${profileAlias}.id = ${jobSeekerAlias}.profile_id`;
+  }
+
+  return null;
+}
+
 /**
  * Filter สำหรับ jobposts-based endpoints
  * ใช้กับ jp.created_at เป็นช่วงเวลา
@@ -706,23 +766,38 @@ app.get("/api/employer/profile", async (req, res) => {
     const totalJobs = parseInt(jobsRows[0].total, 10) || 0;
 
     let completedJobs = 0;
+    let activeWorkers = 0;
     const hasJobApplications = await hasTable(pool, "job_applications");
     const hasEmployments = await hasTable(pool, "employments");
+    const hasEmploymentStatus = await hasColumn(pool, "employments", "employment_status");
     if (hasJobApplications && hasEmployments) {
-      const hiresSql = `SELECT COUNT(e.employment_id) AS total
-                        FROM employments e
-                        JOIN job_applications ja ON e.job_application_id = ja.job_application_id
-                        JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id
-                        WHERE jp.employer_id = $1`;
+      const activeFilterExpr = hasEmploymentStatus
+        ? "COUNT(*) FILTER (WHERE LOWER(COALESCE(e.employment_status::text, '')) = 'active')::int"
+        : "COUNT(e.employment_id)::int";
+      const hiresSql = `
+        SELECT
+          COUNT(e.employment_id)::int AS total,
+          ${activeFilterExpr} AS active_total
+        FROM employments e
+        JOIN job_applications ja ON e.job_application_id = ja.job_application_id
+        JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id
+        WHERE jp.employer_id = $1
+      `;
       const { rows: hiresRows } = await pool.query(hiresSql, [employer_id]);
       completedJobs = parseInt(hiresRows[0].total, 10) || 0;
+      activeWorkers = hasEmploymentStatus
+        ? parseInt(hiresRows[0].active_total, 10) || 0
+        : completedJobs;
     }
 
     res.json({
       ...employer,
+      contact_method: employer.contact_method || "Email",
+      contact_value: employer.contact_value || employer.email || null,
+      verified: Boolean(employer.verified),
       total_jobs: totalJobs,
       completed_jobs: completedJobs,
-      active_workers: Math.round(completedJobs * 0.8) // Approximation for UI if real status missing
+      active_workers: activeWorkers,
     });
   } catch (err) {
     console.error("🚫 /employer/profile error:", err);
@@ -736,28 +811,30 @@ app.get("/api/employer/jobposts", async (req, res) => {
     const employerFilter = employer_id ? "WHERE jp.employer_id = $1" : "";
     const params = employer_id ? [employer_id] : [];
     const hasJobApplications = await hasTable(pool, "job_applications");
-
-    const hasTitle = await hasColumn(pool, "jobposts", "title");
-    const titleExpr = hasTitle ? "jp.title" : "concat(jt.job_type, ' #', jp.jobpost_id)";
+    const titleExpr = await getJobTitleExpression(pool);
+    const provinceExpr = "COALESCE(p_direct.name_th, p_district.name_th, p_sd.name_th, '-')";
 
     const sql = `
       SELECT
         jp.jobpost_id,
         ${titleExpr} AS title,
         jt.job_type,
-        p.name_th AS province,
+        ${provinceExpr} AS province,
         COALESCE(jp.approval_status::text, 'Unknown'::text) AS approval_status,
         COALESCE(jp.wage_amount, 0) AS wage_amount,
         jp.created_at::date AS posted_date,
         ${hasJobApplications ? "COUNT(ja.job_application_id)" : "0"}::int AS applicants
       FROM jobposts jp
       JOIN job_types jt ON jp.job_type_id = jt.job_type_id
-      JOIN sub_districts sd ON jp.sub_district_id = sd.id
-      JOIN districts d ON sd.district_id = d.id
-      JOIN provinces p ON d.province_id = p.id
+      LEFT JOIN provinces p_direct ON p_direct.id = jp.province_id
+      LEFT JOIN districts d_direct ON d_direct.id = jp.district_id
+      LEFT JOIN provinces p_district ON p_district.id = d_direct.province_id
+      LEFT JOIN sub_districts sd ON sd.id = jp.sub_district_id
+      LEFT JOIN districts d_sd ON d_sd.id = sd.district_id
+      LEFT JOIN provinces p_sd ON p_sd.id = d_sd.province_id
       ${hasJobApplications ? "LEFT JOIN job_applications ja ON ja.jobpost_id = jp.jobpost_id" : ""}
       ${employerFilter}
-      GROUP BY jp.jobpost_id, ${titleExpr}, jt.job_type, p.name_th, jp.approval_status, jp.wage_amount, jp.created_at
+      GROUP BY jp.jobpost_id, ${titleExpr}, jt.job_type, ${provinceExpr}, jp.approval_status, jp.wage_amount, jp.created_at
       ORDER BY jp.created_at DESC
       LIMIT 50
     `;
@@ -931,26 +1008,36 @@ app.get("/api/employer/completed-jobs", async (req, res) => {
     const hasJobposts = await hasTable(pool, "jobposts");
     if (!hasEmployments || !hasJobApplications || !hasJobposts) return res.json([]);
     const hasEmploymentCreated = await hasColumn(pool, "employments", "created_at");
+    const hasEmploymentStatus = await hasColumn(pool, "employments", "employment_status");
     const orderExpr = hasEmploymentCreated ? "e.created_at" : "ja.applied_at";
     const { employer_id } = req.query;
     const employerFilter = employer_id ? "AND jp.employer_id = $1" : "";
     const params = employer_id ? [employer_id] : [];
+    const titleExpr = await getJobTitleExpression(pool);
+    const provinceExpr = "COALESCE(p_direct.name_th, p_district.name_th, p_sd.name_th, '-')";
+    const completedFilter = hasEmploymentStatus
+      ? "AND LOWER(COALESCE(e.employment_status::text, '')) IN ('completed', 'inactive')"
+      : "";
 
     const sql = `
       SELECT
         e.employment_id,
-        jt.job_type AS title,
-        p.name_th AS province,
+        ${titleExpr} AS title,
+        ${provinceExpr} AS province,
         ja.applied_at::date AS applied_at,
         ${hasEmploymentCreated ? "e.created_at::date" : "NULL"} AS hired_at
       FROM employments e
       JOIN job_applications ja ON e.job_application_id = ja.job_application_id
       JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id
       JOIN job_types jt ON jp.job_type_id = jt.job_type_id
-      JOIN sub_districts sd ON jp.sub_district_id = sd.id
-      JOIN districts d ON sd.district_id = d.id
-      JOIN provinces p ON d.province_id = p.id
+      LEFT JOIN provinces p_direct ON p_direct.id = jp.province_id
+      LEFT JOIN districts d_direct ON d_direct.id = jp.district_id
+      LEFT JOIN provinces p_district ON p_district.id = d_direct.province_id
+      LEFT JOIN sub_districts sd ON sd.id = jp.sub_district_id
+      LEFT JOIN districts d_sd ON d_sd.id = sd.district_id
+      LEFT JOIN provinces p_sd ON p_sd.id = d_sd.province_id
       WHERE 1=1 ${employerFilter}
+      ${completedFilter}
       ORDER BY ${orderExpr} DESC
       LIMIT 50
     `;
@@ -967,8 +1054,7 @@ app.get("/api/employer/notifications", async (req, res) => {
   try {
     const hasJobposts = await hasTable(pool, "jobposts");
     if (!hasJobposts) return res.json([]);
-    const hasTitle = await hasColumn(pool, "jobposts", "title");
-    const titleExpr = hasTitle ? "jp.title" : "jt.job_type";
+    const titleExpr = await getJobTitleExpression(pool);
     const { employer_id } = req.query;
     const employerFilter = employer_id ? "AND jp.employer_id = $1" : "";
     const params = employer_id ? [employer_id] : [];
@@ -976,7 +1062,7 @@ app.get("/api/employer/notifications", async (req, res) => {
     const sql = `
       SELECT
         jp.jobpost_id,
-        COALESCE(${titleExpr}, jt.job_type) AS title,
+        ${titleExpr} AS title,
         COALESCE(jp.approval_status::text, 'Unknown'::text) AS status,
         jp.created_at::date AS created_at
       FROM jobposts jp
@@ -1003,6 +1089,7 @@ app.get("/api/employer/kpis", async (req, res) => {
     const params = employer_id ? [employer_id] : [];
 
     const hasWorkersNeeded = await hasColumn(pool, "jobposts", "workers_needed");
+    const hasEmploymentStatus = await hasColumn(pool, "employments", "employment_status");
 
     const sql = `
       WITH jp AS (
@@ -1018,14 +1105,13 @@ app.get("/api/employer/kpis", async (req, res) => {
         FROM employments e
         JOIN job_applications ja ON e.job_application_id = ja.job_application_id
         JOIN jp ON ja.jobpost_id = jp.jobpost_id
-        ${await hasColumn(pool, "employments", "employment_status") ? "WHERE e.employment_status ILIKE 'active'" : ""}
       ),
       completed AS (
         SELECT COUNT(*)::int AS total_completed
         FROM employments e
         JOIN job_applications ja ON e.job_application_id = ja.job_application_id
         JOIN jp ON ja.jobpost_id = jp.jobpost_id
-        ${await hasColumn(pool, "employments", "employment_status") ? "WHERE e.employment_status IN ('completed', 'Inactive', 'inactive')" : ""}
+        ${hasEmploymentStatus ? "WHERE LOWER(COALESCE(e.employment_status::text, '')) IN ('completed', 'inactive')" : ""}
       )
       SELECT
         (SELECT COUNT(*) FROM jp WHERE approval_status = 'Approved')::int AS active_jobs,
@@ -1033,7 +1119,7 @@ app.get("/api/employer/kpis", async (req, res) => {
         (SELECT total_hired FROM hires) AS workers_hired,
         (SELECT total_completed FROM completed) AS completed_jobs,
         ${hasWorkersNeeded
-        ? "(SELECT COALESCE(SUM(workers_needed),0) FROM jp) - (SELECT total_hired FROM hires) AS open_positions"
+        ? "GREATEST((SELECT COALESCE(SUM(workers_needed),0) FROM jp) - (SELECT total_hired FROM hires), 0)::int AS open_positions"
         : "0 AS open_positions"
       }
     `;
@@ -1078,19 +1164,19 @@ app.get("/api/employer/hiring-funnel", async (req, res) => {
     const { employer_id } = req.query;
     const employerFilter = employer_id ? "AND jp.employer_id = $1" : "";
     const params = employer_id ? [employer_id] : [];
-    const hasStatus = await hasColumn(pool, "job_applications", "status");
+    const applicationStatusExpr = await getApplicationStatusExpression(pool);
     const hasEmploymentStatus = await hasColumn(pool, "employments", "employment_status");
 
     const sql = `
       SELECT
         (SELECT COUNT(*) FROM job_applications ja JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter})::int AS applications,
-        ${hasStatus
-        ? `(SELECT COUNT(*) FROM job_applications ja JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter} AND ja.status = 'approved')::int`
+        ${applicationStatusExpr
+        ? `(SELECT COUNT(*) FROM job_applications ja JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter} AND LOWER(COALESCE(${applicationStatusExpr}::text, '')) = 'approved')::int`
         : "0"
       } AS approved,
         (SELECT COUNT(*) FROM employments e JOIN job_applications ja ON e.job_application_id = ja.job_application_id JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter})::int AS hired,
         ${hasEmploymentStatus
-        ? `(SELECT COUNT(*) FROM employments e JOIN job_applications ja ON e.job_application_id = ja.job_application_id JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter} AND e.employment_status IN ('completed', 'Inactive', 'inactive'))::int`
+        ? `(SELECT COUNT(*) FROM employments e JOIN job_applications ja ON e.job_application_id = ja.job_application_id JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id ${employerFilter} AND LOWER(COALESCE(e.employment_status::text, '')) IN ('completed', 'inactive'))::int`
         : "0"
       } AS completed
     `;
@@ -1166,10 +1252,12 @@ app.get("/api/employer/jobpost-summary", async (req, res) => {
   try {
     const { employer_id } = req.query;
     if (!employer_id) return res.status(400).json({ error: "employer_id required" });
+    const jobTitleExpr = await getJobTitleExpression(pool);
 
     const sql = `
       SELECT
         jp.jobpost_id,
+        ${jobTitleExpr} AS job_title,
         jt.job_type,
         COUNT(DISTINCT ja.job_application_id)::int AS applicant_count,
         COALESCE(SUM(e.agreed_wage), 0)::float AS total_agreed_wage
@@ -1178,7 +1266,7 @@ app.get("/api/employer/jobpost-summary", async (req, res) => {
       LEFT JOIN job_applications ja ON ja.jobpost_id = jp.jobpost_id
       LEFT JOIN employments e ON e.job_application_id = ja.job_application_id
       WHERE jp.employer_id = $1
-      GROUP BY jp.jobpost_id, jt.job_type
+      GROUP BY jp.jobpost_id, ${jobTitleExpr}, jt.job_type
       ORDER BY total_agreed_wage DESC
     `;
     const { rows } = await pool.query(sql, [employer_id]);
@@ -1194,10 +1282,12 @@ app.get("/api/employer/employment-timeline", async (req, res) => {
   try {
     const { employer_id } = req.query;
     if (!employer_id) return res.status(400).json({ error: "employer_id required" });
+    const safeTitleExpr = await getJobTitleExpression(pool);
 
     const sql = `
       SELECT
         jp.jobpost_id,
+        ${safeTitleExpr} AS title,
         jt.job_type,
         COUNT(e.employment_id)::int AS employment_count,
         MIN(e.start_date) AS earliest_start,
@@ -1209,7 +1299,7 @@ app.get("/api/employer/employment-timeline", async (req, res) => {
       JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id
       JOIN job_types jt ON jp.job_type_id = jt.job_type_id
       WHERE jp.employer_id = $1
-      GROUP BY jp.jobpost_id, jt.job_type, e.employment_status
+      GROUP BY jp.jobpost_id, ${safeTitleExpr}, jt.job_type, e.employment_status
       ORDER BY total_agreed_wage DESC
     `;
     const { rows } = await pool.query(sql, [employer_id]);
@@ -1241,6 +1331,10 @@ app.get("/api/employer/recent-applications", async (req, res) => {
     const { employer_id, jobpost_id } = req.query;
     const params = [];
     let filters = "WHERE 1=1";
+    const seekerIdExpr = await getApplicationSeekerIdExpression(pool);
+    const profileJoinCondition = await getProfileJoinCondition(pool);
+    const jobTitleExpr = await getJobTitleExpression(pool);
+    const provinceExpr = "COALESCE(p_direct.name_th, p_district.name_th, p_sd.name_th, '-')";
 
     if (employer_id) {
       params.push(employer_id);
@@ -1254,17 +1348,23 @@ app.get("/api/employer/recent-applications", async (req, res) => {
     const sql = `
       SELECT
         ja.job_application_id,
-        ja.job_seeker_id,
+        ${seekerIdExpr} AS job_seeker_id,
+        COALESCE(NULLIF(TRIM(CONCAT_WS(' ', pr.first_name, pr.last_name)), ''), ${seekerIdExpr}::text) AS applicant_name,
         jp.jobpost_id,
-        jt.job_type AS job_title,
+        ${jobTitleExpr} AS job_title,
         ja.applied_at::date AS applied_at,
-        p.name_th AS province
+        ${provinceExpr} AS province
       FROM job_applications ja
+      LEFT JOIN job_seekers js ON ${seekerIdExpr} = js.job_seeker_id
+      ${profileJoinCondition ? `LEFT JOIN profiles pr ON ${profileJoinCondition}` : "LEFT JOIN profiles pr ON false"}
       JOIN jobposts jp ON ja.jobpost_id = jp.jobpost_id
       JOIN job_types jt ON jp.job_type_id = jt.job_type_id
-      JOIN sub_districts sd ON jp.sub_district_id = sd.id
-      JOIN districts d ON sd.district_id = d.id
-      JOIN provinces p ON d.province_id = p.id
+      LEFT JOIN provinces p_direct ON p_direct.id = jp.province_id
+      LEFT JOIN districts d_direct ON d_direct.id = jp.district_id
+      LEFT JOIN provinces p_district ON p_district.id = d_direct.province_id
+      LEFT JOIN sub_districts sd ON sd.id = jp.sub_district_id
+      LEFT JOIN districts d_sd ON d_sd.id = sd.district_id
+      LEFT JOIN provinces p_sd ON p_sd.id = d_sd.province_id
       ${filters}
       ORDER BY ja.applied_at DESC
       LIMIT 50

@@ -1,8 +1,7 @@
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "";
-const EMPLOYER_ID =
-  (typeof localStorage !== "undefined" && localStorage.getItem("employer_id")) ||
-  import.meta.env.VITE_EMPLOYER_ID ||
-  "";
+const storedEmployerId =
+  typeof localStorage !== "undefined" ? localStorage.getItem("employer_id") : "";
+const EMPLOYER_ID = import.meta.env.VITE_EMPLOYER_ID || storedEmployerId || "";
 
 function withEmployer(path: string) {
   if (!EMPLOYER_ID) return path;

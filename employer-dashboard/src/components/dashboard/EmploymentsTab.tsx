@@ -7,6 +7,7 @@ import EmploymentsQuartileChart, { type EmploymentsQuartileDatum } from "@/compo
 
 type TimelineRow = {
   jobpost_id: string;
+  title: string;
   job_type: string;
   employment_count: number;
   earliest_start: string;
@@ -69,6 +70,7 @@ const EmploymentsTab = () => {
 
     const map = new Map<string, {
       jobpost_id: string;
+      title: string;
       job_type: string;
       total_agreed_wage: number;
       employment_count: number;
@@ -87,6 +89,7 @@ const EmploymentsTab = () => {
       } else {
         map.set(row.jobpost_id, {
           jobpost_id: row.jobpost_id,
+          title: row.title,
           job_type: row.job_type,
           total_agreed_wage: row.total_agreed_wage,
           employment_count: row.employment_count,
@@ -112,7 +115,7 @@ const EmploymentsTab = () => {
     () =>
       aggregated.map((row, index) => ({
         jobpostId: row.jobpost_id,
-        label: `${row.job_type} (${row.jobpost_id})`,
+        label: row.title,
         jobType: row.job_type,
         start: row.earliest_start,
         end: row.latest_end,
@@ -186,7 +189,7 @@ const EmploymentsTab = () => {
           </div>
           {selectedRow && (
             <div className="rounded-lg bg-secondary/70 px-3 py-2 text-xs text-muted-foreground">
-              Focus: <span className="font-medium text-card-foreground">{selectedRow.job_type} ({selectedRow.jobpost_id})</span>
+              Focus: <span className="font-medium text-card-foreground">{selectedRow.title}</span>
             </div>
           )}
         </div>
@@ -221,7 +224,7 @@ const EmploymentsTab = () => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="py-2 text-left font-medium text-muted-foreground">Jobpost</th>
+                <th className="py-2 text-left font-medium text-muted-foreground">Job Title</th>
                 <th className="py-2 text-left font-medium text-muted-foreground">Type</th>
                 <th className="py-2 text-right font-medium text-muted-foreground">Employments</th>
                 <th className="py-2 text-left font-medium text-muted-foreground">Start</th>
@@ -241,7 +244,7 @@ const EmploymentsTab = () => {
                       isSelected ? "bg-primary/5" : "hover:bg-accent/50"
                     } cursor-pointer`}
                   >
-                    <td className="py-3 font-medium text-card-foreground">{row.jobpost_id}</td>
+                    <td className="py-3 font-medium text-card-foreground">{row.title}</td>
                     <td className="py-3 text-muted-foreground">{row.job_type}</td>
                     <td className="py-3 text-right text-muted-foreground">{row.employment_count}</td>
                     <td className="py-3 text-muted-foreground">{formatDateValue(row.earliest_start)}</td>
@@ -271,8 +274,8 @@ const EmploymentsTab = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="break-words font-medium text-card-foreground">{row.job_type}</p>
-                    <p className="text-xs text-muted-foreground">Jobpost {row.jobpost_id}</p>
+                    <p className="break-words font-medium text-card-foreground">{row.title}</p>
+                    <p className="text-xs text-muted-foreground">{row.job_type}</p>
                   </div>
                   <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
                     {row.employment_count} hires
